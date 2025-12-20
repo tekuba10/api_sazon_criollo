@@ -28,6 +28,21 @@ switch ($uri) {
         require __DIR__ . '/auth/login.php';
         break;
 
+    case '/admin/create-registration-link':
+        require __DIR__ . '/admin/create-registration-link.php';
+        break;
+
+    case '/auth/register':
+        require __DIR__ . '/auth/register.php';
+        break;
+
+    case '/users/profile':
+        require __DIR__ . '/users/profile.php';
+        break;
+
+
+
+
     default:
         http_response_code(404);
         echo json_encode(['error' => 'Not found']);
