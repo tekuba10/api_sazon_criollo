@@ -24,6 +24,10 @@ switch ($uri) {
         ]);
         break;
 
+    case '/auth/login':
+        require __DIR__ . '/auth/login.php';
+        break;
+
     default:
         http_response_code(404);
         echo json_encode(['error' => 'Not found']);
