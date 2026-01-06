@@ -32,9 +32,9 @@ try {
         'expires_at' => $expiresAt
     ]);
 
-    // Respuesta
+    // Respuesta con tu dominio real
     echo json_encode([
-        'registration_url' => "https://tu-frontend.com/register?token=$token",
+        'registration_url' => "https://sazoncriolloapi.eu/register?token=$token",
         'expires_at' => $expiresAt
     ]);
 } catch (PDOException $e) {

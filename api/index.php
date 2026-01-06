@@ -40,6 +40,27 @@ switch ($uri) {
         require __DIR__ . '/users/profile.php';
         break;
 
+    // RECETAS
+
+    case '/recipes/create':
+        require __DIR__ . '/recipes/create.php';
+        break;
+
+    case '/recipes/list':
+        require __DIR__ . '/recipes/list.php';
+        break;
+    
+    case '/recipes/delete':
+        require __DIR__ . '/recipes/delete.php';
+        break;
+    
+    case '/recipes/edit':
+        require __DIR__ . '/recipes/edit.php';
+        break;
+
+    case '/recipes/view':
+        require __DIR__ . '/recipes/view.php';
+        break;
 
 
 
