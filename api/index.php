@@ -1,6 +1,11 @@
 <?php
 header('Content-Type: application/json');
 
+require __DIR__ . '/middleware/cors.php';
+require __DIR__ . '/config/database.php';
+require __DIR__ . '/config/admin.php';
+
+
 $method = $_SERVER['REQUEST_METHOD'];
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
@@ -61,6 +66,39 @@ switch ($uri) {
     case '/recipes/view':
         require __DIR__ . '/recipes/view.php';
         break;
+
+    // CAMPAÑAS
+
+    case '/admin/campaigns':
+        require __DIR__ . '/admin/campaigns.php';
+        break;
+
+    case '/campaigns/active':
+        require __DIR__ . '/campaigns/active.php';
+        break;
+
+    case '/admin/campaigns/edit':
+        require __DIR__ . '/admin/campaigns-edit.php';
+        break;
+
+    case '/admin/campaigns/delete':
+        require __DIR__ . '/admin/campaigns-delete.php';
+        break;
+    
+    case '/admin/campaigns/list':
+        require __DIR__ . '/admin/campaigns-list.php';
+        break;
+
+    case '/admin/campaigns/view':
+        require __DIR__ . '/admin/campaigns-view.php';
+        break;
+
+    case '/admin/campaigns/deactivate':
+        require __DIR__ . '/admin/campaigns-deactivate.php';
+        break;
+
+
+
 
 
 
