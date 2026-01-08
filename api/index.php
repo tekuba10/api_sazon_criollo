@@ -66,6 +66,11 @@ switch ($uri) {
     case '/recipes/view':
         require __DIR__ . '/recipes/view.php';
         break;
+    
+    case '/recipes/upload':
+        require __DIR__ . '/recipes/upload.php';
+        break;
+
 
     // CAMPAÑAS
 
