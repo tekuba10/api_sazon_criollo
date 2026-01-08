@@ -3,33 +3,37 @@ require __DIR__ . '/../config/admin.php';
 require __DIR__ . '/../config/database.php';
 require __DIR__ . '/../config/supabase.php';
 
-$headers = array_change_key_case(getallheaders(), CASE_UPPER);
+header('Content-Type: application/json; charset=utf-8');
 
+// Validar ADMIN KEY
+$headers = array_change_key_case(getallheaders(), CASE_UPPER);
 if (!isset($headers['X-ADMIN-KEY']) || trim($headers['X-ADMIN-KEY']) !== trim(ADMIN_KEY)) {
     http_response_code(403);
-    echo json_encode(["error" => "Acceso denegado"]);
+    echo json_encode(["error" => "Acceso denegado"], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
-$data = json_decode(file_get_contents("php://input"), true);
-$id = $data['id_campaña'] ?? null;
-
+// Tomar ID desde form-data o query param
+$id = $_POST['id_campaña'] ?? $_GET['id_campaña'] ?? null;
 if (!$id) {
     http_response_code(400);
-    echo json_encode(["error" => "ID de campaña requerido"]);
+    echo json_encode(["error" => "ID de campaña requerido"], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
-// Si llega un banner nuevo, lo subimos al bucket correcto
+// Si llega banner nuevo y se indica dispositivo, subirlo
 $bannerUrl = null;
-if (isset($_FILES['banner'])) {
+$device = $_POST['device'] ?? null;
+
+if (isset($_FILES['banner']) && $device) {
     $banner = $_FILES['banner'];
-    $device = $data['device'] ?? "mobile";
-    $path = "banners/$device/" . basename($banner['name']);
+    // Generamos nombre seguro para evitar sobrescribir
+    $fileName = bin2hex(random_bytes(6)) . "-" . preg_replace('/[^a-zA-Z0-9_\-\.]/', '_', $banner['name']);
+    $path = "banners/$device/$fileName";
     $bannerUrl = supabaseUpload("campaigns", $path, $banner['tmp_name'], $banner['type']);
 }
 
-// Update solo con columnas que SÍ existen en tu tabla
+// Actualizar solo columnas que existen en tu BD
 $stmt = $pdo->prepare("
   UPDATE public.campañas
   SET 
@@ -40,21 +44,30 @@ $stmt = $pdo->prepare("
     fecha_final = COALESCE(:fecha_final, fecha_final),
     dirigido = COALESCE(:dirigido, dirigido)
   WHERE id_campaña = :id
-  RETURNING id_campaña, titulo, banner_escritorio, banner_tablet, banner_movil, fecha_inicio, fecha_final, dirigido, created_at
+  RETURNING id_campaña, titulo, url_etsy, banner_escritorio, banner_tablet, banner_movil, dirigido, fecha_inicio, fecha_final, created_at
 ");
 
 $stmt->execute([
   "id" => $id,
-  "titulo" => $data['titulo'] ?? null,
-  "banner_escritorio" => ($data['device'] ?? null) === "desktop" ? $bannerUrl : null,
-  "banner_tablet" => ($data['device'] ?? null) === "tablet" ? $bannerUrl : null,
-  "banner_movil" => ($data['device'] ?? null) === "mobile" ? $bannerUrl : null,
-  "fecha_final" => $data['fecha_final'] ?? null,
-  "dirigido" => $data['dirigido'] ?? null
+  "titulo" => $_POST['titulo'] ?? null,
+  "banner_escritorio" => $device === "desktop" ? $bannerUrl : null,
+  "banner_tablet" => $device === "tablet" ? $bannerUrl : null,
+  "banner_movil" => $device === "mobile" ? $bannerUrl : null,
+  "fecha_final" => $_POST['fecha_final'] ?? null,
+  "dirigido" => $_POST['dirigido'] ?? null
 ]);
 
+$updated = $stmt->fetch(PDO::FETCH_ASSOC);
+
+if (!$updated) {
+    http_response_code(404);
+    echo json_encode(["error" => "Campaña no encontrada o no se pudo actualizar"], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
+// Respuesta final consistente
 echo json_encode([
   "status" => "ok",
-  "message" => "Campaña actualizada",
-  "campaña" => $stmt->fetch(PDO::FETCH_ASSOC)
-]);
+  "message" => "Campaña actualizada correctamente",
+  "campaign" => $updated
+], JSON_UNESCAPED_UNICODE);
