@@ -102,6 +102,11 @@ switch ($uri) {
         require __DIR__ . '/admin/campaigns-deactivate.php';
         break;
 
+    // DASHBOARD
+
+    case '/admin/dashboard':
+        require __DIR__ . '/admin/dashboard.php';
+        break;
 
 
 
