@@ -109,8 +109,13 @@ switch ($uri) {
         break;
     
     case '/admin/users':
-    require __DIR__ . '/admin/users.php';
-    break;
+        require __DIR__ . '/admin/users.php';
+        break;
+
+    case '/admin/users/status':
+        require __DIR__ . '/admin/status.php';
+        break;
+
 
 
 
