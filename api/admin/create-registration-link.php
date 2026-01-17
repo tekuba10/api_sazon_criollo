@@ -34,7 +34,8 @@ try {
 
     // Respuesta
     echo json_encode([
-        'registration_url' => "https://tu-frontend.com/register?token=$token",
+        'registration_url' => "https://sazoncriolloapp.com/register?$token
+",
         'expires_at' => $expiresAt
     ]);
 } catch (PDOException $e) {
