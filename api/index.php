@@ -107,6 +107,11 @@ switch ($uri) {
     case '/admin/dashboard':
         require __DIR__ . '/admin/dashboard.php';
         break;
+    
+    case '/admin/users':
+    require __DIR__ . '/admin/users.php';
+    break;
+
 
 
 

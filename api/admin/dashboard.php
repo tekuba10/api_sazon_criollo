@@ -16,19 +16,12 @@ if (!isset($headers['X-ADMIN-KEY']) || trim($headers['X-ADMIN-KEY']) !== trim(AD
 
 try {
 
-    /* ===============================
-       1️⃣ TOTAL DE USUARIOS
-       =============================== */
     $stmtUsers = $pdo->query("
         SELECT COUNT(*) AS total
         FROM public.users
     ");
     $totalUsers = (int) $stmtUsers->fetch(PDO::FETCH_ASSOC)['total'];
 
-    /* ===============================
-       2️⃣ CAMPAÑAS ACTIVAS
-       (fecha_final >= ahora)
-       =============================== */
     $stmtCampaigns = $pdo->query("
         SELECT COUNT(*) AS total
         FROM public.\"campañas\"
@@ -36,16 +29,13 @@ try {
     ");
     $activeCampaigns = (int) $stmtCampaigns->fetch(PDO::FETCH_ASSOC)['total'];
 
-    /* ===============================
-       3️⃣ ÚLTIMOS 10 USUARIOS
-       (ordenados por fecha_creacion)
-       =============================== */
     $stmtLatestUsers = $pdo->query("
-        SELECT id_user, nombre, email, fecha_creacion
+        SELECT id_user, nombre, apellido, usuario, email
         FROM public.users
         ORDER BY fecha_creacion DESC
         LIMIT 10
     ");
+
     $latestUsers = $stmtLatestUsers->fetchAll(PDO::FETCH_ASSOC);
 
     /* ===============================
