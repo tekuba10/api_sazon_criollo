@@ -73,7 +73,7 @@
 
 ---
 
-### `POST /admin/campaigns`
+### `POST /admin/campaigns/create`
 - Header: `X-ADMIN-KEY: <clave_admin>`
 - Form-Data:
   - `banner` (requerido, imagen)
