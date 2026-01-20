@@ -33,7 +33,7 @@ try {
         SELECT id_user, nombre, apellido, usuario, email
         FROM public.users
         ORDER BY fecha_creacion DESC
-        LIMIT 10
+        LIMIT 2
     ");
 
     $latestUsers = $stmtLatestUsers->fetchAll(PDO::FETCH_ASSOC);
