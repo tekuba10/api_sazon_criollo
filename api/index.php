@@ -74,8 +74,8 @@ switch ($uri) {
 
     // CAMPAÑAS
 
-    case '/admin/campaigns':
-        require __DIR__ . '/admin/campaigns.php';
+    case '/admin/campaigns/create':
+        require __DIR__ . '/admin/campaigns-create.php';
         break;
 
     case '/campaigns/active':
