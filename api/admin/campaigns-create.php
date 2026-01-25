@@ -81,9 +81,12 @@ $banner_movil = supabaseUpload(
 // =====================
 $stmt = $pdo->prepare("
   INSERT INTO campañas
-  (titulo, url_etsy, banner_escritorio, banner_tablet, banner_movil, fecha_inicio, fecha_final, dirigido_todos, activa)
-  VALUES
-  (:titulo, :url_etsy, :be, :bt, :bm, :fi, :ff, :todos, true)
+    (titulo, url_etsy, banner_escritorio, banner_tablet, banner_movil,
+    fecha_inicio, fecha_final, dirigido_todos, activa)
+    VALUES
+    (:titulo, :url_etsy, :be, :bt, :bm,
+    :fi, :ff, :todos, :activa)
+
   RETURNING id_campaña, created_at
 ");
 
@@ -95,6 +98,8 @@ $stmt->bindValue(':bm', $banner_movil, PDO::PARAM_STR);
 $stmt->bindValue(':fi', $_POST['fecha_inicio'], PDO::PARAM_STR);
 $stmt->bindValue(':ff', $_POST['fecha_final'], PDO::PARAM_STR);
 $stmt->bindValue(':todos', $dirigidoTodos, PDO::PARAM_BOOL);
+$activa = $_POST['activa'] === 'true';
+$stmt->bindValue(':activa', $activa, PDO::PARAM_BOOL);
 
 $stmt->execute();
 

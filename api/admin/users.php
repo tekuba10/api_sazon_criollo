@@ -27,7 +27,8 @@ try {
             fecha_nacimiento,
             idioma,
             marketing_opt_in,
-            fecha_creacion
+            fecha_creacion,
+            is_active
         FROM public.users
         ORDER BY fecha_creacion DESC
     ");
