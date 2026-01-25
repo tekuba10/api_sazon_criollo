@@ -33,10 +33,6 @@ switch ($uri) {
         require __DIR__ . '/auth/login.php';
         break;
 
-    case '/admin/create-registration-link':
-        require __DIR__ . '/admin/create-registration-link.php';
-        break;
-
     case '/auth/register':
         require __DIR__ . '/auth/register.php';
         break;
@@ -71,6 +67,8 @@ switch ($uri) {
         require __DIR__ . '/recipes/upload.php';
         break;
 
+
+    // ADMINISTRADOR 
 
     // CAMPAÑAS
 
@@ -108,8 +106,18 @@ switch ($uri) {
         require __DIR__ . '/admin/dashboard.php';
         break;
     
+    case '/admin/create-registration-link':
+        require __DIR__ . '/admin/create-registration-link.php';
+        break;
+
+    // USUARIO
+
     case '/admin/users':
         require __DIR__ . '/admin/users.php';
+        break;
+
+    case '/admin/users/delete':
+        require __DIR__ . '/admin/users-delete.php';
         break;
 
     case '/admin/users/status':

@@ -30,3 +30,15 @@ if (!defined('ADMIN_KEY')) {
     }
     define('ADMIN_KEY', $adminKey);
 }
+
+// Cargar KEY_DELETE_USERS solo si no está definida
+if (!defined('KEY_DELETE_USERS')) {
+    $deleteKey = getenv('KEY_DELETE_USERS');
+    if (!$deleteKey) {
+        http_response_code(500);
+        echo json_encode(['error' => 'KEY_DELETE_USERS no definida']);
+        exit;
+    }
+    define('KEY_DELETE_USERS', trim($deleteKey));
+}
+
