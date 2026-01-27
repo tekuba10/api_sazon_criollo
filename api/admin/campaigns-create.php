@@ -53,28 +53,59 @@ if (!in_array($_POST['dirigido_todos'], ['true', 'false'], true)) {
 $dirigidoTodos = $_POST['dirigido_todos'] === 'true';
 
 // =====================
+// VALIDAR DUPLICADOS EN STORAGE
+// =====================
+$paths = [
+    'desktop/' . basename($_FILES['banner_escritorio']['name']),
+    'tablet/' . basename($_FILES['banner_tablet']['name']),
+    'mobile/' . basename($_FILES['banner_movil']['name']),
+];
+
+foreach ($paths as $path) {
+    if (supabaseFileExists('campaigns', $path)) {
+        http_response_code(409);
+        echo json_encode([
+            "error" => "Ya existe un archivo con ese nombre",
+            "archivo" => $path
+        ]);
+        exit;
+    }
+}
+
+// =====================
 // SUBIDA DE BANNERS
 // =====================
+$uploadedPaths = [];
+
 $banner_escritorio = supabaseUpload(
     "campaigns",
-    "desktop/" . basename($_FILES['banner_escritorio']['name']),
+    $paths[0],
     $_FILES['banner_escritorio']['tmp_name'],
     $_FILES['banner_escritorio']['type']
 );
 
+if (!$banner_escritorio) goto rollback;
+$uploadedPaths[] = $paths[0];
+
 $banner_tablet = supabaseUpload(
     "campaigns",
-    "tablet/" . basename($_FILES['banner_tablet']['name']),
+    $paths[1],
     $_FILES['banner_tablet']['tmp_name'],
     $_FILES['banner_tablet']['type']
 );
 
+if (!$banner_tablet) goto rollback;
+$uploadedPaths[] = $paths[1];
+
 $banner_movil = supabaseUpload(
     "campaigns",
-    "mobile/" . basename($_FILES['banner_movil']['name']),
+    $paths[2],
     $_FILES['banner_movil']['tmp_name'],
     $_FILES['banner_movil']['type']
 );
+
+if (!$banner_movil) goto rollback;
+$uploadedPaths[] = $paths[2];
 
 // =====================
 // INSERT CAMPAÑA
@@ -82,29 +113,25 @@ $banner_movil = supabaseUpload(
 $stmt = $pdo->prepare("
   INSERT INTO campañas
     (titulo, url_etsy, banner_escritorio, banner_tablet, banner_movil,
-    fecha_inicio, fecha_final, dirigido_todos, activa)
-    VALUES
+     fecha_inicio, fecha_final, dirigido_todos, activa)
+  VALUES
     (:titulo, :url_etsy, :be, :bt, :bm,
-    :fi, :ff, :todos, :activa)
-
+     :fi, :ff, :todos, :activa)
   RETURNING id_campaña, created_at
 ");
 
-$stmt->bindValue(':titulo', $_POST['titulo'], PDO::PARAM_STR);
-$stmt->bindValue(':url_etsy', $_POST['url_etsy'], PDO::PARAM_STR);
-$stmt->bindValue(':be', $banner_escritorio, PDO::PARAM_STR);
-$stmt->bindValue(':bt', $banner_tablet, PDO::PARAM_STR);
-$stmt->bindValue(':bm', $banner_movil, PDO::PARAM_STR);
-$stmt->bindValue(':fi', $_POST['fecha_inicio'], PDO::PARAM_STR);
-$stmt->bindValue(':ff', $_POST['fecha_final'], PDO::PARAM_STR);
+$stmt->bindValue(':titulo', $_POST['titulo']);
+$stmt->bindValue(':url_etsy', $_POST['url_etsy']);
+$stmt->bindValue(':be', $banner_escritorio);
+$stmt->bindValue(':bt', $banner_tablet);
+$stmt->bindValue(':bm', $banner_movil);
+$stmt->bindValue(':fi', $_POST['fecha_inicio']);
+$stmt->bindValue(':ff', $_POST['fecha_final']);
 $stmt->bindValue(':todos', $dirigidoTodos, PDO::PARAM_BOOL);
-$activa = $_POST['activa'] === 'true';
-$stmt->bindValue(':activa', $activa, PDO::PARAM_BOOL);
+$stmt->bindValue(':activa', $_POST['activa'] === 'true', PDO::PARAM_BOOL);
 
 $stmt->execute();
-
 $res = $stmt->fetch(PDO::FETCH_ASSOC);
-$idCampaña = $res['id_campaña'];
 
 // =====================
 // USUARIOS ESPECÍFICOS
@@ -123,9 +150,10 @@ if (!$dirigidoTodos) {
     ");
 
     foreach ($_POST['usuarios'] as $idUser) {
-        $stmtUser->bindValue(':id_campania', $idCampaña, PDO::PARAM_INT);
-        $stmtUser->bindValue(':id_user', $idUser, PDO::PARAM_INT);
-        $stmtUser->execute();
+        $stmtUser->execute([
+            ':id_campania' => $res['id_campaña'],
+            ':id_user' => $idUser
+        ]);
     }
 }
 
@@ -134,7 +162,7 @@ if (!$dirigidoTodos) {
 // =====================
 echo json_encode([
     "status" => "ok",
-    "id_campaña" => $idCampaña,
+    "id_campaña" => $res['id_campaña'],
     "banners" => [
         "desktop" => $banner_escritorio,
         "tablet" => $banner_tablet,
@@ -142,3 +170,15 @@ echo json_encode([
     ],
     "created_at" => $res['created_at']
 ]);
+exit;
+
+// =====================
+// ROLLBACK STORAGE
+// =====================
+rollback:
+foreach ($uploadedPaths as $p) {
+    supabaseDelete('campaigns', $p);
+}
+
+http_response_code(500);
+echo json_encode(["error" => "Error subiendo banners, operación revertida"]);

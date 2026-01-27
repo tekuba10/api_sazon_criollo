@@ -11,7 +11,7 @@ function supabaseUpload($bucket, $path, $fileTmpPath, $mimeType) {
     $headers = [
         "Authorization: Bearer " . $SUPABASE_KEY,
         "Content-Type: " . $mimeType,
-        "x-upsert: true"
+        "x-upsert: false" // ⛔ NO sobrescribir
     ];
 
     $ch = curl_init($url);
@@ -45,4 +45,31 @@ function supabaseDelete($bucket, $path) {
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
     curl_exec($ch);
     curl_close($ch);
+}
+
+
+function supabaseFileExists(string $bucket, string $path): bool
+{
+    global $SUPABASE_URL, $SUPABASE_KEY;
+
+    $url = $SUPABASE_URL . "/storage/v1/object/info/$bucket/$path";
+
+    $headers = [
+        "Authorization: Bearer " . $SUPABASE_KEY,
+        "apikey: " . $SUPABASE_KEY
+    ];
+
+    $ch = curl_init($url);
+    curl_setopt_array($ch, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HTTPHEADER => $headers,
+        CURLOPT_CUSTOMREQUEST => "GET"
+    ]);
+
+    curl_exec($ch);
+    $status = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    // 200 = existe | 404 = no existe
+    return $status === 200;
 }

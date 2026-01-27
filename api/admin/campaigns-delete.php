@@ -6,65 +6,127 @@ require __DIR__ . '/../config/supabase.php';
 
 header('Content-Type: application/json; charset=utf-8');
 
+function getStoragePathFromUrl(string $url): ?string
+{
+    $marker = '/storage/v1/object/public/campaigns/';
+    if (strpos($url, $marker) === false) {
+        return null;
+    }
+
+    return substr($url, strpos($url, $marker) + strlen($marker));
+}
+
+
 $headers = array_change_key_case(getallheaders(), CASE_UPPER);
 
-// 1. Validar Admin Key
+// ============================
+// 1. Validar ADMIN KEY
+// ============================
 if (!isset($headers['X-ADMIN-KEY']) || trim($headers['X-ADMIN-KEY']) !== trim(ADMIN_KEY)) {
     http_response_code(403);
     echo json_encode(["error" => "Acceso denegado"], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
-// 2. Obtener ID por query param
-$id = $_GET['id_campaña'] ?? null;
-if (!$id) {
+// ============================
+// 2. Validar ID campaña
+// ============================
+$id = $_GET['id_campana'] ?? null;
+
+if (!$id || !is_numeric($id)) {
     http_response_code(400);
-    echo json_encode(["error" => "ID de campaña requerido"], JSON_UNESCAPED_UNICODE);
+    echo json_encode(["error" => "id_campana inválido"], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
+
+
 try {
-    // 3. Obtener campaña y banners (con alias correctos)
+    // ============================
+    // 3. Iniciar transacción
+    // ============================
+    $pdo->beginTransaction();
+
+    // ============================
+    // 4. Obtener banners
+    // ============================
     $stmt = $pdo->prepare("
-      SELECT banner_escritorio, banner_tablet, banner_movil
-      FROM public.campañas
-      WHERE id_campaña = :id
-      LIMIT 1
+        SELECT banner_escritorio, banner_tablet, banner_movil
+        FROM public.campañas
+        WHERE id_campaña = :id
+        LIMIT 1
     ");
     $stmt->execute(["id" => $id]);
     $campaña = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$campaña) {
+        $pdo->rollBack();
         http_response_code(404);
         echo json_encode(["error" => "Campaña no encontrada"], JSON_UNESCAPED_UNICODE);
         exit;
     }
 
-    // 4. Determinar banner a borrar
-    $bannerUrl = $campaña['banner_tablet'] ?? $campaña['banner_escritorio'] ?? $campaña['banner_movil'] ?? null;
-
-    if ($bannerUrl) {
-        // 5. Extraer path real dentro del bucket
-        $parts = explode("/public/campaigns/", $bannerUrl);
-        $filePath = end($parts);
-
-        // 6. Borrar del bucket en Supabase Storage
-        $ch = curl_init("https://" . SUPABASE_URL . "/storage/v1/object/public/campaigns/" . $filePath);
-        curl_setopt($ch, CURLOPT_CUSTOMREQUEST, "DELETE");
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            "Authorization: Bearer " . SUPABASE_KEY
-        ]);
-        curl_exec($ch);
-        curl_close($ch);
-    }
-
-    // 7. Borrar la campaña de Postgres
-    $stmt = $pdo->prepare("DELETE FROM public.campañas WHERE id_campaña = :id");
+    // ============================
+    // 5. Borrar usuarios dirigidos
+    // ============================
+    $stmt = $pdo->prepare("
+        DELETE FROM public.campaña_usuarios
+        WHERE id_campaña = :id
+    ");
     $stmt->execute(["id" => $id]);
 
-    echo json_encode(["status" => "ok", "message" => "Campaña y banner eliminados correctamente"], JSON_UNESCAPED_UNICODE);
+ // ============================
+// 6. Borrar banners del storage
+// ============================
+    $banners = [
+        $campaña['banner_escritorio'],
+        $campaña['banner_tablet'],
+        $campaña['banner_movil']
+    ];
 
-} catch (PDOException $e) {
+    foreach ($banners as $bannerUrl) {
+        if (empty($bannerUrl)) {
+            continue;
+        }
+
+        $filePath = getStoragePathFromUrl($bannerUrl);
+        if (!$filePath) {
+            continue;
+        }
+
+        // Usa la función centralizada de Supabase
+        supabaseDelete('campaigns', $filePath);
+    }
+
+
+
+    // ============================
+    // 7. Borrar campaña
+    // ============================
+    $stmt = $pdo->prepare("
+        DELETE FROM public.campañas
+        WHERE id_campaña = :id
+    ");
+    $stmt->execute(["id" => $id]);
+
+    // ============================
+    // 8. Commit
+    // ============================
+    $pdo->commit();
+
+    echo json_encode([
+        "status"  => "ok",
+        "message" => "Campaña eliminada correctamente"
+    ], JSON_UNESCAPED_UNICODE);
+
+} catch (Throwable $e) {
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
+
     http_response_code(500);
-    echo json_encode(["error" => $e->getMessage()], JSON_UNESCAPED_UNICODE);
+    echo json_encode([
+        "error"   => "Error al eliminar la campaña",
+        "detalle" => $e->getMessage()
+    ], JSON_UNESCAPED_UNICODE);
 }
