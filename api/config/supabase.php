@@ -36,7 +36,8 @@ function supabaseDelete($bucket, $path) {
 
     $url = $SUPABASE_URL . "/storage/v1/object/" . $bucket . "/" . $path;
     $headers = [
-        "Authorization: Bearer " . $SUPABASE_KEY
+        "Authorization: Bearer " . $SUPABASE_KEY,
+        "apikey: " . $SUPABASE_KEY
     ];
 
     $ch = curl_init($url);
