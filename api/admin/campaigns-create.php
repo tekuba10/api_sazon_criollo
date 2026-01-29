@@ -99,45 +99,54 @@ $dirigidoTodos = $_POST['dirigido_todos'] === 'true';
 // PATHS (ORIGINAL, SIN TIMESTAMP)
 // =====================
 $paths = [
-    'desktop/' . basename($_FILES['banner_escritorio']['name']),
-    'tablet/'  . basename($_FILES['banner_tablet']['name']),
-    'mobile/'  . basename($_FILES['banner_movil']['name']),
+    'banner_escritorio' => 'desktop/' . basename($_FILES['banner_escritorio']['name']),
+    'banner_tablet'     => 'tablet/'  . basename($_FILES['banner_tablet']['name']),
+    'banner_movil'      => 'mobile/'  . basename($_FILES['banner_movil']['name']),
 ];
+
 
 // =====================
 // VALIDAR DUPLICADOS EN STORAGE
 // =====================
-foreach ($paths as $path) {
+foreach ($paths as $tipo => $path) {
     if (supabaseFileExists('campaigns', $path)) {
         http_response_code(409);
         echo json_encode([
-            "error" => "Ya existe un archivo con ese nombre",
+            "error"     => "La imagen ya existe",
+            "ubicacion" => match ($tipo) {
+                'banner_escritorio' => 'escritorio',
+                'banner_tablet'     => 'tablet',
+                'banner_movil'      => 'mobile',
+            },
             "archivo" => $path
-        ]);
+        ], JSON_UNESCAPED_UNICODE);
         exit;
     }
 }
+
 
 // =====================
 // SUBIDA DE BANNERS
 // =====================
 $uploadedPaths = [];
 
-if (!supabaseUpload('campaigns', $paths[0], $_FILES['banner_escritorio']['tmp_name'], $_FILES['banner_escritorio']['type'])) goto rollback;
-$uploadedPaths[] = $paths[0];
+if (!supabaseUpload('campaigns', $paths['banner_escritorio'], $_FILES['banner_escritorio']['tmp_name'], $_FILES['banner_escritorio']['type'])) goto rollback;
+$uploadedPaths[] = $paths['banner_escritorio'];
 
-if (!supabaseUpload('campaigns', $paths[1], $_FILES['banner_tablet']['tmp_name'], $_FILES['banner_tablet']['type'])) goto rollback;
-$uploadedPaths[] = $paths[1];
+if (!supabaseUpload('campaigns', $paths['banner_tablet'], $_FILES['banner_tablet']['tmp_name'], $_FILES['banner_tablet']['type'])) goto rollback;
+$uploadedPaths[] = $paths['banner_tablet'];
 
-if (!supabaseUpload('campaigns', $paths[2], $_FILES['banner_movil']['tmp_name'], $_FILES['banner_movil']['type'])) goto rollback;
-$uploadedPaths[] = $paths[2];
+if (!supabaseUpload('campaigns', $paths['banner_movil'], $_FILES['banner_movil']['tmp_name'], $_FILES['banner_movil']['type'])) goto rollback;
+$uploadedPaths[] = $paths['banner_movil'];
+
 
 // =====================
 // URLS PÚBLICAS SUPABASE
 // =====================
-$banner_escritorio = SUPABASE_URL . "/storage/v1/object/public/campaigns/" . $paths[0];
-$banner_tablet     = SUPABASE_URL . "/storage/v1/object/public/campaigns/" . $paths[1];
-$banner_movil      = SUPABASE_URL . "/storage/v1/object/public/campaigns/" . $paths[2];
+$banner_escritorio = SUPABASE_URL . "/storage/v1/object/public/campaigns/" . $paths['banner_escritorio'];
+$banner_tablet     = SUPABASE_URL . "/storage/v1/object/public/campaigns/" . $paths['banner_tablet'];
+$banner_movil      = SUPABASE_URL . "/storage/v1/object/public/campaigns/" . $paths['banner_movil'];
+
 
 // =====================
 // INSERT CAMPAÑA
