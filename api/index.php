@@ -104,6 +104,10 @@ switch ($uri) {
         require __DIR__ . '/admin/campaigns-dirigido.php';
         break;
 
+    case '/admin/campaigns/status':
+        require __DIR__ . '/admin/campaigns-status.php';
+        break;
+
     // DASHBOARD
 
     case '/admin/dashboard':
@@ -125,14 +129,8 @@ switch ($uri) {
         break;
 
     case '/admin/users/status':
-        require __DIR__ . '/admin/status.php';
+        require __DIR__ . '/admin/users-status.php';
         break;
-
-
-
-
-
-
 
     default:
         http_response_code(404);
