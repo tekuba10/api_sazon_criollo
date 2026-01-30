@@ -48,7 +48,34 @@ if (!$current) {
 }
 
 // ============================
-// Manejo de banners (MISMA ESTRUCTURA)
+// VALIDACIÓN DE FECHAS (NUEVO)
+// ============================
+$fechaInicio = $_POST['fecha_inicio'] ?? null;
+$fechaFinal  = $_POST['fecha_final'] ?? null;
+
+if ($fechaInicio && $fechaFinal) {
+    try {
+        $inicio = new DateTime($fechaInicio);
+        $final  = new DateTime($fechaFinal);
+
+        if ($inicio >= $final) {
+            http_response_code(400);
+            echo json_encode([
+                "error" => "La fecha de inicio debe ser anterior a la fecha final"
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+    } catch (Exception $e) {
+        http_response_code(400);
+        echo json_encode([
+            "error" => "Formato de fecha inválido"
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+}
+
+// ============================
+// Manejo de banners
 // ============================
 $map = [
     'banner_escritorio' => 'desktop',
@@ -69,30 +96,23 @@ foreach ($map as $field => $folder) {
     $fileName = basename($file['name']);
     $path = "$folder/$fileName";
 
-    // ============================
-    // VALIDAR SI YA EXISTE EL NUEVO
-    // ============================
     if (supabaseFileExists('campaigns', $path)) {
 
-      $labels = [
-          'banner_escritorio' => 'banner de escritorio',
-          'banner_tablet'     => 'banner de tablet',
-          'banner_movil'      => 'banner de móvil'
-      ];
+        $labels = [
+            'banner_escritorio' => 'banner de escritorio',
+            'banner_tablet'     => 'banner de tablet',
+            'banner_movil'      => 'banner de móvil'
+        ];
 
-      http_response_code(409);
-      echo json_encode([
-          "error" => "En {$labels[$field]} ya existe una imagen con este nombre. Cámbialo y vuelve a intentarlo.",
-          "campo" => $field,
-          "archivo" => $path
-      ], JSON_UNESCAPED_UNICODE);
-      exit;
-  }
+        http_response_code(409);
+        echo json_encode([
+            "error" => "En {$labels[$field]} ya existe una imagen con este nombre. Cámbialo y vuelve a intentarlo.",
+            "campo" => $field,
+            "archivo" => $path
+        ], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
 
-
-    // ============================
-    // BORRAR ARCHIVO VIEJO
-    // ============================
     if (!empty($current[$field])) {
         $oldPath = parse_url($current[$field], PHP_URL_PATH);
         $oldPath = ltrim(str_replace('/storage/v1/object/public/campaigns/', '', $oldPath), '/');
@@ -102,9 +122,6 @@ foreach ($map as $field => $folder) {
         }
     }
 
-    // ============================
-    // SUBIR NUEVO ARCHIVO
-    // ============================
     if (!supabaseUpload('campaigns', $path, $file['tmp_name'], $file['type'])) {
         http_response_code(500);
         echo json_encode([
@@ -115,7 +132,6 @@ foreach ($map as $field => $folder) {
 
     $newBanners[$field] = SUPABASE_URL . "/storage/v1/object/public/campaigns/" . $path;
 }
-
 
 // ============================
 // UPDATE campaña
@@ -147,8 +163,8 @@ $stmt->execute([
     "id" => $id,
     "titulo" => $_POST['titulo'] ?? null,
     "url_etsy" => $_POST['url_etsy'] ?? null,
-    "fecha_inicio" => $_POST['fecha_inicio'] ?? null,
-    "fecha_final" => $_POST['fecha_final'] ?? null,
+    "fecha_inicio" => $fechaInicio,
+    "fecha_final" => $fechaFinal,
     "be" => $newBanners['banner_escritorio'],
     "bt" => $newBanners['banner_tablet'],
     "bm" => $newBanners['banner_movil']
