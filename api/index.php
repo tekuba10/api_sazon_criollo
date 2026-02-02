@@ -132,6 +132,28 @@ switch ($uri) {
         require __DIR__ . '/admin/users-status.php';
         break;
 
+    // RECOMENDADO
+
+    case '/admin/recommended/create':
+        require __DIR__ . '/admin/recommended-create.php';
+        break;
+    
+    case '/admin/recommended/list':
+        require __DIR__ . '/admin/recommended-list.php';
+        break;
+
+    case '/admin/recommended/view':
+        require __DIR__ . '/admin/recommended-view.php';
+        break;
+    
+    case '/admin/recommended/delete':
+        require __DIR__ . '/admin/recommended-delete.php';
+        break;
+
+    case '/admin/recommended/edit':
+        require __DIR__ . '/admin/recommended-edit.php';
+        break;
+
     default:
         http_response_code(404);
         echo json_encode(['error' => 'Not found']);
