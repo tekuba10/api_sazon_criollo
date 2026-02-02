@@ -1,1 +1,2 @@
-*/5 * * * * /usr/bin/php /var/www/html/cron/cron_campaigns.php >> /var/log/campanias_cron.log 2>&1
+*/5 * * * * root /usr/local/bin/php /var/www/html/cron/cron_campaigns.php >> /var/log/campanias_cron.log 2>&1
+

@@ -8,8 +8,12 @@ RUN apt-get update && apt-get install -y \
     unzip \
     curl \
     cron \
+    supervisor \
+    procps \
     && docker-php-ext-install pdo pdo_pgsql \
-    && docker-php-ext-enable pdo_pgsql
+    && docker-php-ext-enable pdo_pgsql \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
 # =========================
 # Configuración PHP
@@ -23,7 +27,6 @@ RUN echo "upload_max_filesize=50M" > /usr/local/etc/php/conf.d/uploads.ini \
 # =========================
 # CRON
 # =========================
-
 # Copiar archivo cron
 COPY campanias-cron /etc/cron.d/campanias-cron
 
@@ -35,13 +38,16 @@ RUN chmod 0644 /etc/cron.d/campanias-cron \
 RUN touch /var/log/campanias_cron.log
 
 # =========================
-# Limpieza
+# SUPERVISOR
 # =========================
-RUN apt-get clean && rm -rf /var/lib/apt/lists/*
+COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
+# =========================
+# Directorio de trabajo
+# =========================
 WORKDIR /var/www/html
 
 # =========================
-# Iniciar cron + php-fpm
+# Comando final
 # =========================
-CMD cron && php-fpm
+CMD ["/usr/bin/supervisord"]
