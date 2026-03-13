@@ -3,6 +3,7 @@ require __DIR__ . '/../middleware/auth.php';
 require __DIR__ . '/../config/database.php';
 require __DIR__ . '/../config/supabase.php';
 
+header("Content-Type: application/json");
 
 
 $data = $_POST;
@@ -14,59 +15,153 @@ if (!$user) {
     exit;
 }
 
-if (!isset($_FILES['pdf'])) {
+/* =========================
+   VALIDAR DESCRIPCIÓN
+========================= */
+
+if (empty($data['descripcion']) || trim($data['descripcion']) === '') {
+    http_response_code(400);
+    echo json_encode(["error" => "Descripción requerida"]);
+    exit;
+}
+
+/* =========================
+   VALIDAR PDF
+========================= */
+
+if (!isset($_FILES['pdf']) || $_FILES['pdf']['error'] !== UPLOAD_ERR_OK) {
     http_response_code(400);
     echo json_encode(["error" => "PDF requerido"]);
     exit;
 }
 
 $pdf = $_FILES['pdf'];
-$cover = $_FILES['cover'] ?? null;
 
-// Subir PDF al bucket privado recipes
-$pathPdf = "users/{$user['id_user']}/pdf/" . basename($pdf['name']);
+$finfo = new finfo(FILEINFO_MIME_TYPE);
+$pdfMime = $finfo->file($pdf['tmp_name']);
 
-$pdfUrl = supabaseUpload(
-    "recipes", 
-    $pathPdf, 
-    $pdf['tmp_name'], 
-    $pdf['type']
-);
+if ($pdfMime !== 'application/pdf') {
+    http_response_code(400);
+    echo json_encode(["error" => "El archivo debe ser un PDF válido"]);
+    exit;
+}
 
-if (!$pdfUrl) {
+/* =========================
+   GENERAR RUTAS
+========================= */
+
+$userId   = $user['id_user'];
+$uniqueId = bin2hex(random_bytes(8));
+
+$pdfPath   = "users/{$userId}/pdf/{$uniqueId}.pdf";
+$coverPath = "users/{$userId}/cover/{$uniqueId}.jpg";
+
+/* =========================
+   SUBIR PDF
+========================= */
+
+$pdfUpload = supabaseUpload("recipes", $pdfPath, $pdf['tmp_name'], $pdfMime);
+
+if (!$pdfUpload) {
     http_response_code(500);
     echo json_encode(["error" => "No se pudo subir el PDF"]);
     exit;
 }
 
-// Subir portada si existe
-$coverUrl = null;
-if ($cover) {
-    $pathCover = "users/{$user['id_user']}/cover/" . basename($cover['name']);
-    $coverUrl = supabaseUpload("recipes", $pathCover, $cover['tmp_name'], $cover['type']);
+/* =========================
+   GENERAR PORTADA DESDE PDF
+========================= */
+
+$tempCoverPath = sys_get_temp_dir() . "/cover_{$uniqueId}.jpg";
+
+try {
+    $imagick = new \Imagick();
+    $imagick->setResolution(150, 150);
+    $imagick->readImage($pdf['tmp_name'] . "[0]");
+    $imagick->setImageFormat("jpeg");
+    $imagick->setImageCompressionQuality(85);
+    $imagick->writeImage($tempCoverPath);
+    $imagick->clear();
+    $imagick->destroy();
+
+} catch (Exception $e) {
+
+    supabaseDelete("recipes", $pdfPath);
+
+    http_response_code(500);
+    echo json_encode(["error" => "No se pudo generar la portada automáticamente"]);
+    exit;
 }
 
-// Guardar metadata en PostgreSQL
-$stmt = $pdo->prepare("
-    INSERT INTO public.recetas (id_user, titulo, descripcion, pdf_url, cover_image)
-    VALUES (:id_user, :titulo, :descripcion, :pdf_url, :cover_image)
-    RETURNING id_receta, created_at
-");
+/* =========================
+   SUBIR PORTADA
+========================= */
 
-$stmt->execute([
-    'id_user' => $user['id_user'],
-    'titulo' => $data['titulo'] ?? $pdf['name'],
-    'descripcion' => $data['descripcion'] ?? null,
-    'pdf_url' => $pdfUrl,
-    'cover_image' => $coverUrl
-]);
+$coverUpload = supabaseUpload(
+    "recipes",
+    $coverPath,
+    $tempCoverPath,
+    "image/jpeg"
+);
 
-$res = $stmt->fetch(PDO::FETCH_ASSOC);
+unlink($tempCoverPath);
+
+if (!$coverUpload) {
+
+    supabaseDelete("recipes", $pdfPath);
+
+    http_response_code(500);
+    echo json_encode(["error" => "No se pudo subir la portada generada"]);
+    exit;
+}
+
+/* =========================
+   INSERT EN BD (GUARDANDO SOLO PATH)
+========================= */
+
+try {
+
+    $pdo->beginTransaction();
+
+    $stmt = $pdo->prepare("
+        INSERT INTO public.recetas 
+        (id_user, descripcion, pdf_url, cover_image)
+        VALUES 
+        (:id_user, :descripcion, :pdf_url, :cover_image)
+        RETURNING id_receta, created_at
+    ");
+
+    $stmt->execute([
+        'id_user'     => $userId,
+        'descripcion' => trim($data['descripcion']),
+        'pdf_url'     => $pdfPath,    // 👈 Guardamos SOLO path
+        'cover_image' => $coverPath   // 👈 Guardamos SOLO path
+    ]);
+
+    $res = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    $pdo->commit();
+
+} catch (Exception $e) {
+
+    $pdo->rollBack();
+
+    supabaseDelete("recipes", $pdfPath);
+    supabaseDelete("recipes", $coverPath);
+
+    http_response_code(500);
+    echo json_encode(["error" => "Error al guardar en base de datos"]);
+    exit;
+}
+
+/* =========================
+   RESPUESTA
+========================= */
 
 echo json_encode([
-    "status" => "ok",
-    "id_receta" => $res['id_receta'],
-    "pdf_url" => $pdfUrl,      // 👈 usamos la variable que sí existe
-    "cover_image" => $coverUrl, // 👈 usamos la variable que sí existe
-    "created_at" => $res['created_at']
+    "status"      => "ok",
+    "id_receta"   => $res['id_receta'],
+    "pdf_path"    => $pdfPath,
+    "cover_path"  => $coverPath,
+    "created_at"  => $res['created_at']
 ]);

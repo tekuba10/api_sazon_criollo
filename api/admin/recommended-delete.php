@@ -41,7 +41,7 @@ $stmt = $pdo->prepare("
     LIMIT 1
 ");
 $stmt->execute([':id' => $id]);
-$row = $stmt->fetch(PDO::FETCH_ASSOC);
+$row = $stmt->fetch(\PDO::FETCH_ASSOC);
 
 if (!$row) {
     http_response_code(404);
@@ -83,7 +83,7 @@ try {
     ]);
     exit;
 
-} catch (Exception $e) {
+} catch (\Exception $e) {
 
     $pdo->rollBack();
 

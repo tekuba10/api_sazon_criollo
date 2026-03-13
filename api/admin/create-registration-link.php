@@ -34,7 +34,7 @@ try {
 
     // Respuesta
     echo json_encode([
-        'registration_url' => "https://sazoncriolloapp.com/register?$token
+        'registration_url' => "https://sazoncriolloapp.com/register?token=$token
 ",
         'expires_at' => $expiresAt
     ]);

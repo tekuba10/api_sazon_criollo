@@ -1,5 +1,10 @@
 <?php
-require __DIR__ . '/../config/jwt.php';
+
+require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../config/jwt.php';
+require_once __DIR__ . '/../utils/helpers.php';
+
+header('Content-Type: application/json; charset=utf-8');
 
 $headers = getallheaders();
 $authHeader = $headers['Authorization'] ?? $headers['authorization'] ?? null;
@@ -10,33 +15,28 @@ if (!$authHeader || !str_starts_with($authHeader, "Bearer ")) {
     exit;
 }
 
-// Extraer el JWT correctamente
 $jwt = trim(str_replace("Bearer ", "", $authHeader));
 
-try {
-    // Decodificar con la función correcta que tienes en jwt.php
-    $decoded = jwtDecode($jwt);
+// 🔥 AHORA usamos validateJWT (que verifica token_version)
+$payload = validateJWT($jwt, $pdo);
 
-    // Guardar usuario autenticado globalmente sin roles
-    $GLOBALS['auth_user'] = [
-        "id_user" => $decoded->id_user ?? null,
-        "email"   => $decoded->email ?? null
-    ];
+if (!$payload) {
+    http_response_code(401);
+    echo json_encode(["error" => "Token inválido o expirado"]);
+    exit;
+}
 
-    // También lo ponemos en REQUEST para tus endpoints existentes
-    $_REQUEST['user'] = [
-        "id_user" => $decoded->id_user ?? null,
-        "email"   => $decoded->email ?? null
-    ];
+// Guardar usuario autenticado
+$GLOBALS['auth_user'] = [
+    "id_user" => $payload['id_user'] ?? null,
+    "email"   => $payload['email'] ?? null,
+    "usuario" => $payload['usuario'] ?? null
+];
 
-    // Validar que el token tenga usuario
-    if (!$GLOBALS['auth_user']['id_user']) {
-        http_response_code(401);
-        echo json_encode(["error" => "Token inválido o sin usuario"]);
-        exit;
-    }
+// También opcionalmente en REQUEST
+$_REQUEST['user'] = $GLOBALS['auth_user'];
 
-} catch (Exception $e) {
+if (!$GLOBALS['auth_user']['id_user']) {
     http_response_code(401);
     echo json_encode(["error" => "Token inválido"]);
     exit;

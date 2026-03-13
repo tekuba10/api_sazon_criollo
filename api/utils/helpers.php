@@ -9,11 +9,19 @@ function base64UrlDecode($data) {
 }
 
 function generateJWT(array $payload): string {
-    $header = ['alg' => 'HS256', 'typ' => 'JWT'];
 
-    $payload['exp'] = time() + JWT_EXPIRE;
+    $header = [
+        'alg' => 'HS256',
+        'typ' => 'JWT'
+    ];
 
-    $base64Header = base64UrlEncode(json_encode($header));
+    $now = time();
+
+    $payload['iat'] = $now; // issued at
+    $payload['exp'] = $now + JWT_EXPIRE;
+    $payload['jti'] = bin2hex(random_bytes(16)); // ID único del token
+
+    $base64Header  = base64UrlEncode(json_encode($header));
     $base64Payload = base64UrlEncode(json_encode($payload));
 
     $signature = hash_hmac(
@@ -28,33 +36,40 @@ function generateJWT(array $payload): string {
     return $base64Header . '.' . $base64Payload . '.' . $base64Signature;
 }
 
-function validateJWT(string $jwt) {
-    $parts = explode('.', $jwt);
 
-    if (count($parts) !== 3) {
+function validateJWT(string $jwt, PDO $pdo) {
+
+    try {
+
+        $payload = jwtDecode($jwt);
+
+        // Buscar token_version actual en la base de datos
+        $stmt = $pdo->prepare("
+            SELECT token_version 
+            FROM users 
+            WHERE id_user = :id_user
+        ");
+
+        $stmt->execute([
+            'id_user' => $payload['id_user']
+        ]);
+
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$user) {
+            return false;
+        }
+
+        // Si la versión no coincide → token inválido
+        if ($user['token_version'] != $payload['token_version']) {
+            return false;
+        }
+
+        return $payload;
+
+    } catch (Exception $e) {
         return false;
     }
-
-    [$header, $payload, $signature] = $parts;
-
-    $validSignature = base64UrlEncode(
-        hash_hmac(
-            'sha256',
-            "$header.$payload",
-            JWT_SECRET,
-            true
-        )
-    );
-
-    if (!hash_equals($validSignature, $signature)) {
-        return false;
-    }
-
-    $data = json_decode(base64UrlDecode($payload), true);
-
-    if (!$data || $data['exp'] < time()) {
-        return false;
-    }
-
-    return $data;
 }
+
+

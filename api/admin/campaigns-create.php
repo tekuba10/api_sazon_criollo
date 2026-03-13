@@ -150,7 +150,7 @@ $banner_movil      = SUPABASE_URL . "/storage/v1/object/public/campaigns/" . $pa
 
 // =====================
 // INSERT CAMPAÑA
-// =====================
+// ===================== 
 $stmt = $pdo->prepare("
     INSERT INTO campañas
     (titulo, url_etsy, banner_escritorio, banner_tablet, banner_movil,

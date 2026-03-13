@@ -5,15 +5,23 @@ require __DIR__ . '/middleware/cors.php';
 require __DIR__ . '/config/database.php';
 require __DIR__ . '/config/admin.php';
 
-
 $method = $_SERVER['REQUEST_METHOD'];
 $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
 // Limpia barras finales
 $uri = rtrim($uri, '/');
 
+// 🔥 NORMALIZAR PREFIJO /api
+if (str_starts_with($uri, '/api')) {
+    $uri = substr($uri, 4); // elimina /api
+    if ($uri === '') {
+        $uri = '/';
+    }
+}
+
 switch ($uri) {
 
+    case '/':
     case '/ping':
         echo json_encode([
             'status' => 'ok',
@@ -22,12 +30,13 @@ switch ($uri) {
         break;
 
     case '/db-check':
-        require __DIR__ . '/config/database.php';
         echo json_encode([
             'status' => 'ok',
             'db' => 'connected'
         ]);
         break;
+
+    // USUARIOS
 
     case '/auth/login':
         require __DIR__ . '/auth/login.php';
@@ -41,8 +50,32 @@ switch ($uri) {
         require __DIR__ . '/users/profile.php';
         break;
 
-    // RECETAS
+     case '/users/profile/avatar':
+        require __DIR__ . '/users/avatar.php';
+        break;
 
+    case '/users/languages':
+        require __DIR__ . '/users/languages.php';
+        break;
+    
+    case '/users/change-password':
+        require __DIR__ . '/users/change-password.php';
+        break;
+    
+    case '/auth/reset-password':
+        require __DIR__ . '/auth/reset-password.php';
+        break;
+
+    case '/users/dashboard':
+        require __DIR__ . '/users/dashboard.php';
+        break;
+
+    case '/auth/me':
+        require __DIR__ . '/auth/me.php';
+        break;
+
+        
+    // RECETAS
     case '/recipes/create':
         require __DIR__ . '/recipes/create.php';
         break;
@@ -50,11 +83,11 @@ switch ($uri) {
     case '/recipes/list':
         require __DIR__ . '/recipes/list.php';
         break;
-    
+
     case '/recipes/delete':
         require __DIR__ . '/recipes/delete.php';
         break;
-    
+
     case '/recipes/edit':
         require __DIR__ . '/recipes/edit.php';
         break;
@@ -62,16 +95,12 @@ switch ($uri) {
     case '/recipes/view':
         require __DIR__ . '/recipes/view.php';
         break;
-    
+
     case '/recipes/upload':
         require __DIR__ . '/recipes/upload.php';
         break;
 
-
-    // ADMINISTRADOR 
-
-    // CAMPAÑAS
-
+    // ADMIN – CAMPAÑAS
     case '/admin/campaigns/create':
         require __DIR__ . '/admin/campaigns-create.php';
         break;
@@ -87,7 +116,7 @@ switch ($uri) {
     case '/admin/campaigns/delete':
         require __DIR__ . '/admin/campaigns-delete.php';
         break;
-    
+
     case '/admin/campaigns/list':
         require __DIR__ . '/admin/campaigns-list.php';
         break;
@@ -99,7 +128,7 @@ switch ($uri) {
     case '/admin/campaigns/deactivate':
         require __DIR__ . '/admin/campaigns-deactivate.php';
         break;
-    
+
     case '/admin/campaigns/dirigido':
         require __DIR__ . '/admin/campaigns-dirigido.php';
         break;
@@ -109,17 +138,15 @@ switch ($uri) {
         break;
 
     // DASHBOARD
-
     case '/admin/dashboard':
         require __DIR__ . '/admin/dashboard.php';
         break;
-    
+
     case '/admin/create-registration-link':
         require __DIR__ . '/admin/create-registration-link.php';
         break;
 
-    // USUARIO
-
+    // USUARIOS
     case '/admin/users':
         require __DIR__ . '/admin/users.php';
         break;
@@ -133,11 +160,10 @@ switch ($uri) {
         break;
 
     // RECOMENDADO
-
     case '/admin/recommended/create':
         require __DIR__ . '/admin/recommended-create.php';
         break;
-    
+
     case '/admin/recommended/list':
         require __DIR__ . '/admin/recommended-list.php';
         break;
@@ -145,7 +171,7 @@ switch ($uri) {
     case '/admin/recommended/view':
         require __DIR__ . '/admin/recommended-view.php';
         break;
-    
+
     case '/admin/recommended/delete':
         require __DIR__ . '/admin/recommended-delete.php';
         break;

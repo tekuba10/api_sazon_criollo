@@ -28,20 +28,24 @@ $idioma           = $data['idioma'] ?? 'es';
 $marketing_raw    = $data['marketing_opt_in'] ?? false;
 
 // =========================
-// ✅ VALIDACIÓN BÁSICA
+// ✅ VALIDACIÓN BÁSICA (NO VACÍOS)
 // =========================
-if (
-    !$token ||
-    !$email ||
-    !$password ||
-    !$nombre ||
-    !$apellido ||
-    !$usuario ||
-    !$fecha_nacimiento
-) {
-    http_response_code(400);
-    echo json_encode(['error' => 'Faltan campos obligatorios']);
-    exit;
+$campos = [
+    'token' => $token,
+    'email' => $email,
+    'password' => $password,
+    'nombre' => $nombre,
+    'apellido' => $apellido,
+    'usuario' => $usuario,
+    'fecha_nacimiento' => $fecha_nacimiento
+];
+
+foreach ($campos as $campo => $valor) {
+    if (!isset($valor) || trim($valor) === '') {
+        http_response_code(400);
+        echo json_encode(['error' => "El campo {$campo} es obligatorio"]);
+        exit;
+    }
 }
 
 // =========================
@@ -51,12 +55,65 @@ $email   = strtolower(trim($email));
 $usuario = strtolower(trim($usuario));
 
 // =========================
-// 🔐 VALIDACIÓN DE USUARIO
+// 🎂 VALIDACIÓN EDAD MÍNIMA (6 años)
 // =========================
-if (!preg_match('/^[a-zA-Z0-9._]{3,20}$/', $usuario)) {
+try {
+    $fechaNacimiento = new DateTime($fecha_nacimiento);
+    $hoy = new DateTime();
+
+    // No permitir fecha futura
+    if ($fechaNacimiento > $hoy) {
+        http_response_code(400);
+        echo json_encode(['error' => 'La fecha de nacimiento no puede ser futura']);
+        exit;
+    }
+
+    $edad = $hoy->diff($fechaNacimiento)->y;
+
+    if ($edad < 6) {
+        http_response_code(400);
+        echo json_encode(['error' => 'Debes tener al menos 6 años para registrarte']);
+        exit;
+    }
+
+} catch (Exception $e) {
+    http_response_code(400);
+    echo json_encode(['error' => 'Fecha de nacimiento inválida']);
+    exit;
+}
+
+// =========================
+// 📧 VALIDACIÓN EMAIL
+// =========================
+if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+    http_response_code(400);
+    echo json_encode(['error' => 'El email no es válido']);
+    exit;
+}
+
+// =========================
+// 👤 VALIDACIÓN DE USUARIO (solo minúsculas)
+// =========================
+if (!preg_match('/^[a-z0-9._]{3,20}$/', $usuario)) {
     http_response_code(400);
     echo json_encode([
-        'error' => 'El usuario solo puede contener letras, números, punto y guion bajo (3 a 20 caracteres)'
+        'error' => 'El usuario debe tener entre 3 y 20 caracteres y solo usar minúsculas, números, punto o guion bajo'
+    ]);
+    exit;
+}
+
+// =========================
+// 🔐 VALIDACIÓN DE CONTRASEÑA
+// =========================
+if (
+    strlen($password) < 6 ||
+    !preg_match('/[A-Z]/', $password) ||
+    !preg_match('/[0-9]/', $password) ||
+    !preg_match('/[\W_]/', $password)
+) {
+    http_response_code(400);
+    echo json_encode([
+        'error' => 'La contraseña debe tener al menos 6 caracteres, una mayúscula, un número y un carácter especial'
     ]);
     exit;
 }
@@ -140,7 +197,7 @@ try {
         http_response_code(500);
         echo json_encode([
             'error'   => 'Error interno',
-            'detalle' => $e->getMessage() // solo desarrollo
+            'detalle' => $e->getMessage()
         ]);
     }
     exit;

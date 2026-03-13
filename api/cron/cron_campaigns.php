@@ -10,8 +10,10 @@ try {
     ");
 
     $stmt->execute();
+    $affected = $stmt->rowCount();
 
-    echo date('Y-m-d H:i:s') . " - Campañas vencidas desactivadas\n";
+    echo date('Y-m-d H:i:s') . " - $affected campañas desactivadas\n";
+
 
 } catch (Exception $e) {
     echo date('Y-m-d H:i:s') . " - ERROR: " . $e->getMessage() . "\n";
